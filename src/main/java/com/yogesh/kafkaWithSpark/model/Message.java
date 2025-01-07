@@ -10,7 +10,6 @@ import java.io.Serializable;
 @Getter @Setter
 @Document(collation = "kafkaMessages")
 public class Message implements Serializable {
-
     @Id
     private String id;
     private  String data;
