@@ -1,10 +1,11 @@
-version: '3.8'
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: zookeeper
     ports:
       - "2181:2181"
+    networks:
+      - app-network
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -14,10 +15,12 @@ services:
     container_name: kafka
     ports:
       - "9092:9092"
+    networks:
+      - app-network
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     depends_on:
@@ -30,22 +33,28 @@ services:
     container_name: springboot-app
     ports:
       - "8080:8080"
+    networks:
+      - app-network
     environment:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/streamingDB
     depends_on:
       - kafka
       - mongodb
-    command: >
-      sh -c "mvn spring-boot:run"
 
   mongodb:
     image: mongo:6.0
     container_name: mongodb
     ports:
       - "27017:27017"
+    networks:
+      - app-network
     volumes:
       - mongo-data:/data/db
 
 volumes:
   mongo-data:
+
+networks:
+  app-network:
+    driver: bridge

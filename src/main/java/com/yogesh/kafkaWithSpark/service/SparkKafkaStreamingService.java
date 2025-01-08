@@ -5,16 +5,16 @@ import com.yogesh.kafkaWithSpark.config.KafkaConfig;
 import com.yogesh.kafkaWithSpark.model.Message;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.protocol.types.Field;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.sql.SparkSession;
 import org.apache.spark.streaming.Durations;
 import org.apache.spark.streaming.api.java.JavaInputDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
 import org.apache.spark.streaming.kafka010.ConsumerStrategies;
 import org.apache.spark.streaming.kafka010.KafkaUtils;
 import org.apache.spark.streaming.kafka010.LocationStrategies;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -31,10 +31,12 @@ public class SparkKafkaStreamingService {
     @Autowired
     private MessageRepository messageRepository;
 
+    private static final Logger logger = LoggerFactory.getLogger(SparkKafkaStreamingService.class);
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public void startSparkStream() {
-        System.out.println("Starting Kafka Consumer service and Apache Spark");
+        logger.info("Starting Kafka Consumer service and Apache Spark");
         SparkConf sparkConf = new SparkConf()
                 .setAppName("Kafka-Spark-MongoDB")
                 .setMaster("local[*]");
@@ -52,14 +54,11 @@ public class SparkKafkaStreamingService {
 
             rdd.foreach(message -> {
                 // Process the message (e.g., save to MongoDB)
-                System.out.println("--Received message: " + message.value());
+                logger.info("Received message: {}", message.value());
             });
         });
 
-
         stream.foreachRDD(this::processAndSaveMessages);
-
-
 
         jssc.start();
         try {
@@ -81,7 +80,7 @@ public class SparkKafkaStreamingService {
 
         if (!processedMessages.isEmpty()) {
             messageRepository.saveAll(processedMessages);
-            System.out.println("Saved " + processedMessages.size() + " messages to MongoDB");
+            logger.info("Saved {} messages to MongoDB", processedMessages.size());
         }
     }
 
@@ -96,7 +95,7 @@ public class SparkKafkaStreamingService {
             msg.setTimestamp(new Date().toString());
             return msg;
         } catch (Exception e) {
-            System.err.println("Failed to parse message: " + jsonMessage);
+            logger.error("Failed to parse message: {}", jsonMessage);
             e.printStackTrace();
             return null;
         }
